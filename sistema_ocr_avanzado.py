@@ -1038,7 +1038,7 @@ def generar_campos_clave(campos_extraidos, tipo_documento):
     return campos_clave
 
 def generar_salida_unificada(campos_extraidos, tipo_documento, estadisticas, archivo_original):
-    """Genera salida unificada y estandarizada en 3 bloques fijos."""
+    """Genera salida unificada y estandarizada en 4 bloques fijos para compatibilidad con frontend Angular."""
     
     # 1. CABECERA
     cabecera = {
@@ -1051,7 +1051,7 @@ def generar_salida_unificada(campos_extraidos, tipo_documento, estadisticas, arc
         'tipo_documento': tipo_documento
     }
     
-    # Mapear campos extraídos a cabecera
+    # Mapear campos extraídos a cabecera (robusto, no falla si faltan campos)
     mapeo_cabecera = {
         'NIF_EMISOR': 'nif_emisor',
         'FECHA_EMISION': 'fecha_emision',
@@ -1071,26 +1071,31 @@ def generar_salida_unificada(campos_extraidos, tipo_documento, estadisticas, arc
         'EMPRESA_CONTRATADA': 'razon_social_receptor'
     }
     
+    # Asignar valores de forma segura
     for campo_extraido, valor in campos_extraidos.items():
         if campo_extraido in mapeo_cabecera and valor:
             campo_cabecera = mapeo_cabecera[campo_extraido]
-            cabecera[campo_cabecera] = valor
+            cabecera[campo_cabecera] = str(valor).strip()
     
     # 2. LINEAS
     lineas = []
-    if 'lineas_productos' in campos_extraidos:
+    if 'lineas_productos' in campos_extraidos and campos_extraidos['lineas_productos']:
         for i, linea in enumerate(campos_extraidos['lineas_productos'], 1):
-            accion = determinar_accion(tipo_documento, linea.get('DESCRIPCION', ''))
-            linea_unificada = {
-                'numero_linea': i,
-                'descripcion': linea.get('DESCRIPCION', ''),
-                'cantidad': linea.get('CANTIDAD', None),
-                'precio_unitario': linea.get('PRECIO_UNITARIO', None),
-                'importe_linea': linea.get('PRECIO_UNITARIO', None),
-                'accion': accion,
-                'confianza': linea.get('confianza', 0.95)
-            }
-            lineas.append(linea_unificada)
+            try:
+                accion = determinar_accion(tipo_documento, linea.get('DESCRIPCION', ''))
+                linea_unificada = {
+                    'numero_linea': i,
+                    'descripcion': str(linea.get('DESCRIPCION', '')).strip(),
+                    'cantidad': linea.get('CANTIDAD', None),
+                    'precio_unitario': linea.get('PRECIO_UNITARIO', None),
+                    'importe_linea': linea.get('TOTAL_LINEA', linea.get('PRECIO_UNITARIO', None)),
+                    'accion': accion,
+                    'confianza': float(linea.get('confianza', 0.95))
+                }
+                lineas.append(linea_unificada)
+            except Exception as e:
+                logging.warning(f"Error procesando línea {i}: {e}")
+                continue
     
     # 3. TOTALES
     totales = {
@@ -1100,14 +1105,16 @@ def generar_salida_unificada(campos_extraidos, tipo_documento, estadisticas, arc
         'moneda': 'EUR'
     }
     
-    # Mapear totales
-    if 'BASE_IMPONIBLE' in campos_extraidos:
-        totales['base_imponible'] = campos_extraidos['BASE_IMPONIBLE']
-    if 'TOTAL' in campos_extraidos:
-        totales['total'] = campos_extraidos['TOTAL']
-    if 'IVA' in campos_extraidos:
+    # Mapear totales de forma segura
+    if 'BASE_IMPONIBLE' in campos_extraidos and campos_extraidos['BASE_IMPONIBLE']:
+        totales['base_imponible'] = str(campos_extraidos['BASE_IMPONIBLE']).strip()
+    
+    if 'TOTAL' in campos_extraidos and campos_extraidos['TOTAL']:
+        totales['total'] = str(campos_extraidos['TOTAL']).strip()
+    
+    if 'IVA' in campos_extraidos and campos_extraidos['IVA']:
+        iva_texto = str(campos_extraidos['IVA']).strip()
         # Intentar extraer porcentaje de IVA
-        iva_texto = campos_extraidos.get('IVA', '')
         if '10%' in iva_texto or '10' in iva_texto:
             totales['iva']['10%'] = iva_texto
         elif '21%' in iva_texto or '21' in iva_texto:
@@ -1119,12 +1126,12 @@ def generar_salida_unificada(campos_extraidos, tipo_documento, estadisticas, arc
     
     # 4. METADATOS
     metadatos = {
-        'archivo_original': archivo_original,
-        'confianza_ocr': estadisticas.get('confianza_ocr', 0.0),
-        'confianza_clasificacion': estadisticas.get('confianza_clasificacion', 0.0),
-        'confianza_validacion': estadisticas.get('confianza_validacion', 0.0),
-        'confianza_final': estadisticas.get('confianza_final', 0.0),
-        'requiere_revision': estadisticas.get('confianza_final', 0.0) < 0.95,
+        'archivo_original': str(archivo_original).strip(),
+        'confianza_ocr': float(estadisticas.get('confianza_ocr', 0.0)),
+        'confianza_clasificacion': float(estadisticas.get('confianza_clasificacion', 0.0)),
+        'confianza_validacion': float(estadisticas.get('confianza_validacion', 0.0)),
+        'confianza_final': float(estadisticas.get('confianza_final', 0.0)),
+        'requiere_revision': float(estadisticas.get('confianza_final', 0.0)) < 0.95,
         'timestamp_procesamiento': datetime.now().isoformat() + 'Z'
     }
     
