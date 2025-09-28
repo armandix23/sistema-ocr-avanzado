@@ -1,0 +1,22 @@
+# Configuración para FACTURAS
+# Campos a extraer
+campos: NIF_EMISOR, FECHA_EMISION, NUMERO_FACTURA, NIF_RECEPTOR, EMPRESA_EMISORA, TOTAL, BASE_IMPONIBLE, IVA
+
+# Patrones de extracción (genéricos para cualquier empresa)
+patrones:
+  NIF_EMISOR: ([A-Z]?\d{8}[A-Z]?|[A-Z]\d{7}[A-Z]?|[A-Z]{2}\d{7}[A-Z]?)
+  FECHA_EMISION: (\d{1,2}[/-]\d{1,2}[/-]\d{2,4})
+  NUMERO_FACTURA: (FACTURA[:\s]*(?:SIMPLIFICADA|ORDINARIA)?[:\s]*\d+[-.]?\d*[-.]?\d*)
+  NIF_RECEPTOR: (NIF[:\s]*RECEPTOR[:\s]*[A-Z]?\d{8}[A-Z]?)
+  EMPRESA_EMISORA: ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.&]+(?:S\.?A\.?|S\.?L\.?|S\.?L\.?U\.?|S\.?C\.?O\.?O\.?P\.?))
+  TOTAL: (TOTAL[:\s]*\d+[.,]\d{2})
+  BASE_IMPONIBLE: (BASE[:\s]*IMPONIBLE[:\s]*\d+[.,]\d{2})
+  IVA: (IVA[:\s]*\d+[.,]\d{2})
+
+# Campos requeridos
+requeridos: NIF_EMISOR, FECHA_EMISION, NUMERO_FACTURA, TOTAL
+
+# Líneas de productos
+lineas_productos:
+  patron: (\d+)\s+([A-ZÁÉÍÓÚÑ\s]+)\s+(\d+[.,]\d{2})\s+(\d+[.,]\d{2})
+  campos: CANTIDAD, DESCRIPCION, PRECIO_UNITARIO, TOTAL_LINEA

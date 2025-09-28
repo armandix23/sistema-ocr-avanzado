@@ -1,0 +1,19 @@
+# Configuración para MULTAS
+# Campos a extraer
+campos: ORGANISMO_EMISOR, FECHA_EMISION, NUMERO_EXPEDIENTE, NIF_INFRACTOR, MATRICULA, TOTAL, TIPO_INFRACCION
+
+# Patrones de extracción
+patrones:
+  ORGANISMO_EMISOR: ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.&]+(?:AYUNTAMIENTO|POLICÍA|GUARDIA CIVIL|DGT|CONSEJERÍA|MINISTERIO))
+  FECHA_EMISION: (\d{1,2}[/-]\d{1,2}[/-]\d{2,4})
+  NUMERO_EXPEDIENTE: (EXPEDIENTE[:\s]*\d+[-.]?\d*[-.]?\d*)
+  NIF_INFRACTOR: ([A-Z]?\d{8}[A-Z]?|[A-Z]\d{7}[A-Z]?|[A-Z]{2}\d{7}[A-Z]?)
+  MATRICULA: ([A-Z]{2}\d{4}[A-Z]{2}|[A-Z]{1,2}\d{4}[A-Z]{1,2})
+  TOTAL: (IMPORTE[:\s]*\d+[.,]\d{2}|TOTAL[:\s]*\d+[.,]\d{2})
+  TIPO_INFRACCION: (TIPO[:\s]*INFRACCI[ÓO]N[:\s]*[A-ZÁÉÍÓÚÑ\s]+)
+
+# Campos requeridos
+requeridos: ORGANISMO_EMISOR, FECHA_EMISION, NUMERO_EXPEDIENTE, TOTAL
+
+# Líneas de productos (no aplica para multas)
+lineas_productos: null

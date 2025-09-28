@@ -1,0 +1,19 @@
+# Configuración para OTROS DOCUMENTOS
+# Campos a extraer
+campos: NIF_EMISOR, FECHA_EMISION, NUMERO_DOCUMENTO, EMPRESA_EMISORA, TOTAL
+
+# Patrones de extracción
+patrones:
+  NIF_EMISOR: ([A-Z]?\d{8}[A-Z]?|[A-Z]\d{7}[A-Z]?|[A-Z]{2}\d{7}[A-Z]?)
+  FECHA_EMISION: (\d{1,2}[/-]\d{1,2}[/-]\d{2,4})
+  NUMERO_DOCUMENTO: (\d+[-.]?\d*[-.]?\d*)
+  EMPRESA_EMISORA: ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.&]+(?:S\.?A\.?|S\.?L\.?|S\.?L\.?U\.?|S\.?C\.?O\.?O\.?P\.?))
+  TOTAL: (TOTAL[:\s]*\d+[.,]\d{2}|IMPORTE[:\s]*\d+[.,]\d{2})
+
+# Campos requeridos
+requeridos: NIF_EMISOR, FECHA_EMISION
+
+# Líneas de productos
+lineas_productos:
+  patron: (\d+)\s+([A-ZÁÉÍÓÚÑ\s]+)\s+(\d+[.,]\d{2})
+  campos: CANTIDAD, DESCRIPCION, PRECIO_UNITARIO

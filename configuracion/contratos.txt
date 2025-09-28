@@ -1,0 +1,19 @@
+# Configuración para CONTRATOS
+# Campos a extraer
+campos: NIF_CONTRATANTE, NIF_CONTRATADA, FECHA_CONTRATO, NUMERO_CONTRATO, EMPRESA_CONTRATANTE, EMPRESA_CONTRATADA, OBJETO_CONTRATO
+
+# Patrones de extracción
+patrones:
+  NIF_CONTRATANTE: ([A-Z]?\d{8}[A-Z]?|[A-Z]\d{7}[A-Z]?|[A-Z]{2}\d{7}[A-Z]?)
+  NIF_CONTRATADA: ([A-Z]?\d{8}[A-Z]?|[A-Z]\d{7}[A-Z]?|[A-Z]{2}\d{7}[A-Z]?)
+  FECHA_CONTRATO: (\d{1,2}[/-]\d{1,2}[/-]\d{2,4})
+  NUMERO_CONTRATO: (CONTRATO[:\s]*\d+[-.]?\d*[-.]?\d*)
+  EMPRESA_CONTRATANTE: ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.&]+(?:S\.?A\.?|S\.?L\.?|S\.?L\.?U\.?|S\.?C\.?O\.?O\.?P\.?))
+  EMPRESA_CONTRATADA: ([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.&]+(?:S\.?A\.?|S\.?L\.?|S\.?L\.?U\.?|S\.?C\.?O\.?O\.?P\.?))
+  OBJETO_CONTRATO: (OBJETO[:\s]*[A-ZÁÉÍÓÚÑ\s,\.]+)
+
+# Campos requeridos
+requeridos: NIF_CONTRATANTE, NIF_CONTRATADA, FECHA_CONTRATO, NUMERO_CONTRATO
+
+# Líneas de productos (no aplica para contratos)
+lineas_productos: null
