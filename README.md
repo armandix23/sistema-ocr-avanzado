@@ -127,15 +127,17 @@ Deberías ver la ayuda del sistema sin errores.
 
 ## 🚀 Uso
 
-### Preparación
+### Modo Línea de Comandos
+
+#### Preparación
 1. **Coloca tus documentos** en la carpeta `entrada/`
 2. **Asegúrate de que el entorno virtual esté activado**:
    - Windows: `venv\Scripts\activate`
    - macOS/Linux: `source venv/bin/activate`
 
-### Ejecución
+#### Ejecución
 
-#### Modo Rápido (por defecto)
+**Modo Rápido (por defecto)**:
 ```bash
 # Windows
 python sistema_ocr_avanzado.py --modo rapido
@@ -144,13 +146,86 @@ python sistema_ocr_avanzado.py --modo rapido
 python3 sistema_ocr_avanzado.py --modo rapido
 ```
 
-#### Modo Preciso
+**Modo Preciso**:
 ```bash
 # Windows
 python sistema_ocr_avanzado.py --modo preciso
 
 # macOS/Linux
 python3 sistema_ocr_avanzado.py --modo preciso
+```
+
+### Modo API REST
+
+#### Instalación de dependencias adicionales
+```bash
+pip install fastapi uvicorn python-multipart
+```
+
+#### Ejecutar la API
+```bash
+# Desarrollo
+python api_ocr.py
+
+# Producción
+uvicorn api_ocr:app --host 0.0.0.0 --port 8000
+```
+
+#### Endpoints disponibles
+- **POST** `/upload` - Subir archivo para procesar
+- **GET** `/result/{filename}` - Obtener resultado
+- **GET** `/results` - Listar todos los resultados
+- **GET** `/status` - Estado del procesamiento
+- **GET** `/health` - Salud de la API
+- **GET** `/docs` - Documentación automática
+
+#### Ejemplo de uso con curl
+```bash
+# Subir archivo
+curl -X POST "http://localhost:8000/upload" \
+     -H "accept: application/json" \
+     -H "Content-Type: multipart/form-data" \
+     -F "file=@documento.pdf"
+
+# Obtener resultado
+curl -X GET "http://localhost:8000/result/documento_20250928_120000"
+```
+
+### Docker
+
+#### Construir y ejecutar con Docker
+```bash
+# Construir imagen
+docker build -t sistema-ocr-api .
+
+# Ejecutar contenedor
+docker run -p 8000:8000 -v $(pwd)/entrada:/app/entrada -v $(pwd)/resultados:/app/resultados sistema-ocr-api
+```
+
+#### Usar Docker Compose
+```bash
+# Iniciar servicios
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener servicios
+docker-compose down
+```
+
+### Okteto (Cloud)
+
+#### Desplegar en Okteto
+```bash
+# Instalar Okteto CLI
+curl https://get.okteto.com -sSfL | sh
+
+# Iniciar sesión
+okteto login
+
+# Desplegar
+okteto deploy
 ```
 
 ### Formatos de Documentos Soportados
@@ -168,7 +243,13 @@ El sistema crea automáticamente estas carpetas:
 
 ```
 OCR/
-├── sistema_ocr_avanzado.py    # Script principal
+├── sistema_ocr_avanzado.py    # Script principal (CLI)
+├── api_ocr.py                 # API REST con FastAPI
+├── requirements.txt           # Dependencias Python
+├── Dockerfile                 # Imagen Docker
+├── docker-compose.yml         # Orquestación Docker
+├── okteto.yml                 # Configuración Okteto
+├── test_api.py               # Pruebas de la API
 ├── configuracion/             # Archivos de configuración
 │   ├── facturas.txt
 │   ├── recibos.txt

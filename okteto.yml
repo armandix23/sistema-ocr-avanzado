@@ -1,0 +1,29 @@
+# Configuración para Okteto
+name: sistema-ocr-avanzado
+autocreate: true
+
+build:
+  ocr-api:
+    context: .
+    dockerfile: Dockerfile
+
+deploy:
+  ocr-api:
+    image: okteto.dev/sistema-ocr-avanzado:latest
+    replicas: 1
+    ports:
+      - 8000
+    resources:
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+      requests:
+        memory: 1Gi
+        cpu: 500m
+    env:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /app/entrada
+      - /app/procesados
+      - /app/resultados
+      - /app/logs

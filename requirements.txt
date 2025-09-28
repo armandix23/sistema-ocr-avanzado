@@ -1,0 +1,26 @@
+# Sistema OCR Ultra-Rápido API
+# Dependencias principales
+
+# FastAPI y servidor
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# OCR y procesamiento de imágenes
+paddlepaddle==2.5.2
+opencv-python==4.8.1.78
+PyMuPDF==1.23.8
+
+# Machine Learning
+transformers==4.35.2
+torch==2.1.1
+numpy==1.24.3
+pillow==10.1.0
+
+# Utilidades
+requests==2.31.0
+python-dotenv==1.0.0
+
+# Desarrollo y testing
+pytest==7.4.3
+httpx==0.25.2
