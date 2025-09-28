@@ -27,3 +27,5 @@ deploy:
       - /app/procesados
       - /app/resultados
       - /app/logs
+
+

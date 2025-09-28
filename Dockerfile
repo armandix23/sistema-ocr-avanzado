@@ -44,3 +44,5 @@ EXPOSE 8000
 
 # Comando de inicio
 CMD ["uvicorn", "api_ocr:app", "--host", "0.0.0.0", "--port", "8000"]
+
+

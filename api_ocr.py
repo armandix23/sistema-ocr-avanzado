@@ -121,9 +121,19 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "endpoints": {
-            "upload": "/upload",
-            "status": "/status",
-            "health": "/health"
+            "upload": "/upload - Subir archivo y obtener resultado inmediato",
+            "result": "/result/{filename} - Obtener resultado específico",
+            "results": "/results - Listar todos los resultados",
+            "status": "/status - Estado del procesamiento",
+            "health": "/health - Salud de la API"
+        },
+        "formats_supported": ["PDF", "JPG", "JPEG", "PNG", "BMP", "TIFF"],
+        "document_types": ["FACTURA", "RECIBO", "MULTA", "CONTRATO", "OTROS"],
+        "response_structure": {
+            "cabecera": "Información del emisor y documento",
+            "lineas": "Productos o conceptos",
+            "totales": "Base imponible, IVA y total",
+            "metadatos": "Confianza, validación y timestamp"
         }
     }
 
@@ -258,7 +268,7 @@ worker_thread.start()
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    """Subir y procesar un archivo"""
+    """Subir y procesar un archivo con respuesta inmediata"""
     global processing_status
     
     # Validar tipo de archivo
@@ -291,21 +301,64 @@ async def upload_file(file: UploadFile = File(...)):
         
         logger.info(f"Archivo guardado: {filename}")
         
-        # Añadir a la cola de procesamiento
-        processing_queue.put({
-            "file_path": str(file_path),
-            "filename": filename
-        })
+        # Procesar inmediatamente (sin cola para respuesta directa)
+        processing_status.status = "processing"
+        processing_status.current_file = filename
+        processing_status.progress = 10
+        processing_status.error = None
         
+        # Procesar archivo
+        resultado = procesar_archivo(
+            str(file_path), 
+            ocr_engine, 
+            modo_rapido=True, 
+            tokenizer_phi3=tokenizer_phi3, 
+            model_phi3=model_phi3
+        )
+        
+        processing_status.progress = 80
+        
+        # Extraer información del resultado
+        tipo_documento = resultado.get('clasificacion', {}).get('tipo_detectado', 'OTROS')
+        campos_extraidos = resultado.get('campos_extraidos', {})
+        estadisticas = resultado.get('estadisticas', {})
+        
+        # Generar salida unificada
+        salida_unificada = generar_salida_unificada(
+            campos_extraidos, 
+            tipo_documento, 
+            estadisticas, 
+            filename
+        )
+        
+        processing_status.progress = 90
+        
+        # Guardar resultado
+        archivo_resultado = guardar_resultado(resultado, filename, tipo_documento)
+        
+        # Mover archivo procesado
+        archivo_procesado = mover_archivo_procesado(Path(file_path), tipo_documento)
+        
+        processing_status.progress = 100
+        processing_status.status = "completed"
+        
+        # Devolver resultado inmediatamente
         return {
-            "message": "Archivo subido correctamente",
+            "success": True,
+            "message": "Archivo procesado correctamente",
             "filename": filename,
-            "status": "en_cola",
-            "queue_position": processing_queue.qsize()
+            "resultado": salida_unificada,
+            "tipo_documento": tipo_documento,
+            "confianza_final": estadisticas.get('confianza_final', 0.0),
+            "requiere_revision": estadisticas.get('requiere_revision', False),
+            "archivo_resultado": archivo_resultado,
+            "archivo_procesado": str(archivo_procesado)
         }
         
     except Exception as e:
-        logger.error(f"Error subiendo archivo: {e}")
+        processing_status.status = "error"
+        processing_status.error = str(e)
+        logger.error(f"Error procesando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error procesando archivo: {str(e)}")
 
 @app.get("/result/{filename}")
@@ -323,12 +376,16 @@ async def get_result(filename: str):
                     
                     # Extraer salida unificada
                     salida_unificada = resultado.get('salida_unificada', {})
+                    metadatos = salida_unificada.get('metadatos', {})
                     
                     return {
                         "success": True,
                         "filename": filename,
                         "resultado": salida_unificada,
-                        "timestamp": resultado.get('metadatos', {}).get('timestamp_procesamiento')
+                        "tipo_documento": salida_unificada.get('cabecera', {}).get('tipo_documento'),
+                        "confianza_final": metadatos.get('confianza_final', 0.0),
+                        "requiere_revision": metadatos.get('requiere_revision', False),
+                        "timestamp": metadatos.get('timestamp_procesamiento')
                     }
         
         raise HTTPException(status_code=404, detail="Resultado no encontrado")
@@ -355,11 +412,17 @@ async def list_results():
                         
                         salida_unificada = resultado.get('salida_unificada', {})
                         metadatos = salida_unificada.get('metadatos', {})
+                        cabecera = salida_unificada.get('cabecera', {})
+                        totales = salida_unificada.get('totales', {})
                         
                         resultados.append({
                             "filename": result_file.stem,
-                            "tipo_documento": salida_unificada.get('cabecera', {}).get('tipo_documento'),
+                            "tipo_documento": cabecera.get('tipo_documento'),
+                            "empresa_emisor": cabecera.get('razon_social_emisor'),
+                            "fecha_emision": cabecera.get('fecha_emision'),
+                            "total": totales.get('total'),
                             "confianza_final": metadatos.get('confianza_final', 0.0),
+                            "requiere_revision": metadatos.get('requiere_revision', False),
                             "timestamp": metadatos.get('timestamp_procesamiento'),
                             "archivo_original": metadatos.get('archivo_original')
                         })
@@ -413,3 +476,5 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
+
