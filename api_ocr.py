@@ -53,12 +53,17 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configurar CORS
+# Configurar CORS para Angular frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:4200",  # Angular development server
+        "http://127.0.0.1:4200",
+        "https://localhost:4200",
+        "https://127.0.0.1:4200"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -120,20 +125,21 @@ async def root():
         "version": "2.0.0",
         "status": "running",
         "docs": "/docs",
+        "cors_enabled": "http://localhost:4200",
         "endpoints": {
             "upload": "/upload - Subir archivo y obtener resultado inmediato",
             "result": "/result/{filename} - Obtener resultado específico",
-            "results": "/results - Listar todos los resultados",
+            "results": "/results - Listar todos los documentos procesados",
             "status": "/status - Estado del procesamiento",
             "health": "/health - Salud de la API"
         },
         "formats_supported": ["PDF", "JPG", "JPEG", "PNG", "BMP", "TIFF"],
         "document_types": ["FACTURA", "RECIBO", "MULTA", "CONTRATO", "OTROS"],
         "response_structure": {
-            "cabecera": "Información del emisor y documento",
-            "lineas": "Productos o conceptos",
-            "totales": "Base imponible, IVA y total",
-            "metadatos": "Confianza, validación y timestamp"
+            "cabecera": "nif_emisor, fecha_emision, razon_social_emisora, tipo_documento",
+            "lineas": "descripcion, cantidad, importe_linea",
+            "totales": "base_imponible, iva, total",
+            "metadatos": "archivo_original, confianza_final, requiere_revision"
         }
     }
 
@@ -268,7 +274,17 @@ worker_thread.start()
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    """Subir y procesar un archivo con respuesta inmediata"""
+    """
+    Subir y procesar un archivo con respuesta inmediata
+    
+    - **file**: Archivo a procesar (PDF, JPG, PNG, etc.)
+    
+    Retorna estructura unificada con:
+    - **cabecera**: Información del emisor y documento
+    - **lineas**: Productos o conceptos
+    - **totales**: Base imponible, IVA y total
+    - **metadatos**: Confianza, validación y timestamp
+    """
     global processing_status
     
     # Validar tipo de archivo
@@ -342,17 +358,12 @@ async def upload_file(file: UploadFile = File(...)):
         processing_status.progress = 100
         processing_status.status = "completed"
         
-        # Devolver resultado inmediatamente
+        # Devolver resultado inmediatamente con estructura unificada
         return {
-            "success": True,
-            "message": "Archivo procesado correctamente",
-            "filename": filename,
-            "resultado": salida_unificada,
-            "tipo_documento": tipo_documento,
-            "confianza_final": estadisticas.get('confianza_final', 0.0),
-            "requiere_revision": estadisticas.get('requiere_revision', False),
-            "archivo_resultado": archivo_resultado,
-            "archivo_procesado": str(archivo_procesado)
+            "cabecera": salida_unificada.get('cabecera', {}),
+            "lineas": salida_unificada.get('lineas', []),
+            "totales": salida_unificada.get('totales', {}),
+            "metadatos": salida_unificada.get('metadatos', {})
         }
         
     except Exception as e:
@@ -398,7 +409,16 @@ async def get_result(filename: str):
 
 @app.get("/results")
 async def list_results():
-    """Listar todos los resultados disponibles"""
+    """
+    Listar todos los documentos procesados
+    
+    Retorna lista con:
+    - **nombre**: Nombre del archivo original
+    - **tipo_documento**: FACTURA, RECIBO, MULTA, etc.
+    - **confianza_final**: Nivel de confianza (0.0 - 1.0)
+    - **timestamp**: Fecha y hora de procesamiento
+    - **requiere_revision**: Si necesita revisión manual
+    """
     try:
         resultados = []
         resultados_dir = Path("resultados")
@@ -413,25 +433,19 @@ async def list_results():
                         salida_unificada = resultado.get('salida_unificada', {})
                         metadatos = salida_unificada.get('metadatos', {})
                         cabecera = salida_unificada.get('cabecera', {})
-                        totales = salida_unificada.get('totales', {})
                         
                         resultados.append({
-                            "filename": result_file.stem,
-                            "tipo_documento": cabecera.get('tipo_documento'),
-                            "empresa_emisor": cabecera.get('razon_social_emisor'),
-                            "fecha_emision": cabecera.get('fecha_emision'),
-                            "total": totales.get('total'),
+                            "nombre": metadatos.get('archivo_original', result_file.stem),
+                            "tipo_documento": cabecera.get('tipo_documento', 'OTROS'),
                             "confianza_final": metadatos.get('confianza_final', 0.0),
-                            "requiere_revision": metadatos.get('requiere_revision', False),
                             "timestamp": metadatos.get('timestamp_procesamiento'),
-                            "archivo_original": metadatos.get('archivo_original')
+                            "requiere_revision": metadatos.get('requiere_revision', False)
                         })
         
-        return {
-            "success": True,
-            "total": len(resultados),
-            "resultados": resultados
-        }
+        # Ordenar por timestamp descendente (más recientes primero)
+        resultados.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        return resultados
         
     except Exception as e:
         logger.error(f"Error listando resultados: {e}")

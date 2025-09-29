@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  ocr-api:
+    build: .
+    container_name: sistema-ocr-api-prod
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./entrada:/app/entrada
+      - ./procesados:/app/procesados
+      - ./resultados:/app/resultados
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'

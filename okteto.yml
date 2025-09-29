@@ -22,10 +22,17 @@ deploy:
         cpu: 500m
     env:
       - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
     volumes:
       - /app/entrada
       - /app/procesados
       - /app/resultados
       - /app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 
